@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QPushButton, QComboBox, QProgressBar, QLabel, QFileDialog,
     QListWidget, QListWidgetItem
 )
-from src.downloader import FormatFetcher, DownloadWorker
+from src.downloader import FormatFetcher, DownloadWorker, PlaylistFetcher
 
 
 class MainWindow(QWidget):
@@ -73,12 +73,33 @@ class MainWindow(QWidget):
         if not url:
             return
         self.fetch_btn.setEnabled(False)
-        self.status_label.setText("Fetching formats...")
+        self.status_label.setText("Checking URL...")
 
+        self.playlist_fetcher = PlaylistFetcher(url)
+        self.playlist_fetcher.finished.connect(self.on_playlist_ready)
+        self.playlist_fetcher.not_playlist.connect(lambda: self.fetch_single(url))
+        self.playlist_fetcher.error.connect(lambda e: self.fetch_single(url))
+        self.playlist_fetcher.start()
+
+    def fetch_single(self, url):
+        self.status_label.setText("Fetching formats...")
         self.fetcher = FormatFetcher(url)
         self.fetcher.finished.connect(self.on_formats_ready)
         self.fetcher.error.connect(self.on_error)
         self.fetcher.start()
+
+    def on_playlist_ready(self, entries, playlist_title):
+        self.status_label.setText(
+            f"Playlist detected: {len(entries)} videos. Adding all at best quality."
+        )
+        for e in entries:
+            item = {"url": e["url"], "format_id": "best", "title": e["title"], "status": "Queued"}
+            self.queue.append(item)
+            list_item = QListWidgetItem(f"Queued - {e['title']}")
+            self.queue_list.addItem(list_item)
+            item["list_item"] = list_item
+        self.url_input.clear()
+        self.fetch_btn.setEnabled(True)
 
     def on_formats_ready(self, formats, title):
         self.formats = formats

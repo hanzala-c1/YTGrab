@@ -68,3 +68,37 @@ class DownloadWorker(QThread):
             self.done.emit("Download complete.")
         except Exception as e:
             self.error.emit(str(e))
+
+
+class PlaylistFetcher(QThread):
+    """Checks if a URL is a playlist and lists its entries (flat, no per-video formats)."""
+    finished = Signal(list, str)  # entries, playlist_title
+    not_playlist = Signal()
+    error = Signal(str)
+
+    def __init__(self, url):
+        super().__init__()
+        self.url = url
+
+    def run(self):
+        try:
+            opts = {"quiet": True, "no_warnings": True, "extract_flat": True}
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(self.url, download=False)
+
+            if info.get("_type") != "playlist" or "entries" not in info:
+                self.not_playlist.emit()
+                return
+
+            entries = []
+            for e in info["entries"]:
+                if not e:
+                    continue
+                entries.append({
+                    "url": e.get("url") or f"https://youtube.com/watch?v={e.get('id')}",
+                    "title": e.get("title", "Unknown"),
+                })
+
+            self.finished.emit(entries, info.get("title", "Playlist"))
+        except Exception as e:
+            self.error.emit(str(e))
