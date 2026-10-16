@@ -2,7 +2,8 @@ import sys
 import os
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLineEdit,
-    QPushButton, QComboBox, QProgressBar, QLabel, QFileDialog
+    QPushButton, QComboBox, QProgressBar, QLabel, QFileDialog,
+    QListWidget, QListWidgetItem
 )
 from src.downloader import FormatFetcher, DownloadWorker
 
@@ -11,9 +12,12 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("YTGrab")
-        self.resize(480, 220)
+        self.resize(560, 480)
         self.out_dir = os.path.expanduser("~/Downloads")
         self.formats = []
+        self.queue = []
+        self.current_item = None
+        self.worker = None
 
         layout = QVBoxLayout(self)
 
@@ -32,14 +36,30 @@ class MainWindow(QWidget):
         self.quality_box.setEnabled(False)
         layout.addWidget(self.quality_box)
 
+        add_row = QHBoxLayout()
+        self.add_btn = QPushButton("Add to Queue")
+        self.add_btn.setEnabled(False)
+        self.add_btn.clicked.connect(self.add_to_queue)
+        add_row.addWidget(self.add_btn)
+        layout.addLayout(add_row)
+
+        layout.addWidget(QLabel("Queue:"))
+        self.queue_list = QListWidget()
+        layout.addWidget(self.queue_list)
+
+        queue_btn_row = QHBoxLayout()
+        self.remove_btn = QPushButton("Remove Selected")
+        self.remove_btn.clicked.connect(self.remove_selected)
+        self.start_btn = QPushButton("Start Queue")
+        self.start_btn.clicked.connect(self.start_queue)
+        queue_btn_row.addWidget(self.remove_btn)
+        queue_btn_row.addWidget(self.start_btn)
+        layout.addLayout(queue_btn_row)
+
         dl_row = QHBoxLayout()
         self.folder_btn = QPushButton(f"Save to: {self.out_dir}")
         self.folder_btn.clicked.connect(self.choose_folder)
-        self.download_btn = QPushButton("Download")
-        self.download_btn.setEnabled(False)
-        self.download_btn.clicked.connect(self.start_download)
         dl_row.addWidget(self.folder_btn)
-        dl_row.addWidget(self.download_btn)
         layout.addLayout(dl_row)
 
         self.progress = QProgressBar()
@@ -62,14 +82,43 @@ class MainWindow(QWidget):
 
     def on_formats_ready(self, formats, title):
         self.formats = formats
+        self.current_title = title
         self.title_label.setText(f"Title: {title}")
         self.quality_box.clear()
         for f in formats:
             self.quality_box.addItem(f["label"], f["id"])
         self.quality_box.setEnabled(True)
-        self.download_btn.setEnabled(True)
+        self.add_btn.setEnabled(True)
         self.fetch_btn.setEnabled(True)
-        self.status_label.setText("Ready.")
+        self.status_label.setText("Ready to add to queue.")
+
+    def add_to_queue(self):
+        url = self.url_input.text().strip()
+        format_id = self.quality_box.currentData()
+        title = getattr(self, "current_title", url)
+        if not url or not format_id:
+            return
+
+        item = {"url": url, "format_id": format_id, "title": title, "status": "Queued"}
+        self.queue.append(item)
+
+        list_item = QListWidgetItem(f"Queued - {title}")
+        self.queue_list.addItem(list_item)
+        item["list_item"] = list_item
+
+        self.url_input.clear()
+        self.title_label.setText("")
+        self.quality_box.clear()
+        self.quality_box.setEnabled(False)
+        self.add_btn.setEnabled(False)
+        self.status_label.setText(f"Added to queue ({len(self.queue)} total).")
+
+    def remove_selected(self):
+        row = self.queue_list.currentRow()
+        if row < 0:
+            return
+        self.queue_list.takeItem(row)
+        del self.queue[row]
 
     def choose_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Choose folder", self.out_dir)
@@ -77,27 +126,49 @@ class MainWindow(QWidget):
             self.out_dir = folder
             self.folder_btn.setText(f"Save to: {self.out_dir}")
 
-    def start_download(self):
-        format_id = self.quality_box.currentData()
-        url = self.url_input.text().strip()
-        self.download_btn.setEnabled(False)
-        self.progress.setValue(0)
+    def start_queue(self):
+        if self.worker is not None:
+            return
+        self.process_next()
 
-        self.worker = DownloadWorker(url, format_id, self.out_dir)
+    def process_next(self):
+        pending = [i for i in self.queue if i["status"] == "Queued"]
+        if not pending:
+            self.status_label.setText("Queue complete.")
+            self.worker = None
+            return
+
+        item = pending[0]
+        self.current_item = item
+        item["status"] = "Downloading"
+        item["list_item"].setText(f"Downloading - {item['title']}")
+        self.progress.setValue(0)
+        self.status_label.setText(f"Downloading: {item['title']}")
+
+        self.worker = DownloadWorker(item["url"], item["format_id"], self.out_dir)
         self.worker.progress.connect(self.progress.setValue)
         self.worker.status.connect(self.status_label.setText)
-        self.worker.done.connect(self.on_done)
-        self.worker.error.connect(self.on_error)
+        self.worker.done.connect(self.on_item_done)
+        self.worker.error.connect(self.on_item_error)
         self.worker.start()
 
-    def on_done(self, msg):
-        self.status_label.setText(msg)
-        self.download_btn.setEnabled(True)
+    def on_item_done(self, msg):
+        item = self.current_item
+        item["status"] = "Done"
+        item["list_item"].setText(f"Done - {item['title']}")
+        self.worker = None
+        self.process_next()
+
+    def on_item_error(self, msg):
+        item = self.current_item
+        item["status"] = "Failed"
+        item["list_item"].setText(f"Failed - {item['title']} ({msg[:40]})")
+        self.worker = None
+        self.process_next()
 
     def on_error(self, msg):
         self.status_label.setText(f"Error: {msg}")
         self.fetch_btn.setEnabled(True)
-        self.download_btn.setEnabled(True)
 
 
 if __name__ == "__main__":
