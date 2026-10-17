@@ -1,3 +1,4 @@
+import shutil
 from PySide6.QtCore import QThread, Signal
 import yt_dlp
 
@@ -57,6 +58,9 @@ class DownloadWorker(QThread):
             self.status.emit("Converting...")
 
     def run(self):
+        if self.audio_only and not shutil.which("ffmpeg"):
+            self.error.emit("ffmpeg not found. Please install it.")
+            return
         try:
             if self.audio_only:
                 opts = {

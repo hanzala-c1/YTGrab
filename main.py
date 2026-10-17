@@ -79,13 +79,18 @@ class MainWindow(QWidget):
         if not url:
             return
         self.fetch_btn.setEnabled(False)
-        self.status_label.setText("Checking URL...")
 
-        self.playlist_fetcher = PlaylistFetcher(url)
-        self.playlist_fetcher.finished.connect(self.on_playlist_ready)
-        self.playlist_fetcher.not_playlist.connect(lambda: self.fetch_single(url))
-        self.playlist_fetcher.error.connect(lambda e: self.fetch_single(url))
-        self.playlist_fetcher.start()
+        # Cheap local check first — only hit the network twice for actual playlists
+        looks_like_playlist = "list=" in url or "/playlist" in url
+        if looks_like_playlist:
+            self.status_label.setText("Checking URL...")
+            self.playlist_fetcher = PlaylistFetcher(url)
+            self.playlist_fetcher.finished.connect(self.on_playlist_ready)
+            self.playlist_fetcher.not_playlist.connect(lambda: self.fetch_single(url))
+            self.playlist_fetcher.error.connect(lambda e: self.fetch_single(url))
+            self.playlist_fetcher.start()
+        else:
+            self.fetch_single(url)
 
     def fetch_single(self, url):
         self.status_label.setText("Fetching formats...")
@@ -140,11 +145,15 @@ class MainWindow(QWidget):
         self.quality_box.clear()
         self.quality_box.setEnabled(False)
         self.add_btn.setEnabled(False)
+        self.formats = []
         self.status_label.setText(f"Added to queue ({len(self.queue)} total).")
 
     def remove_selected(self):
         row = self.queue_list.currentRow()
         if row < 0:
+            return
+        if self.queue[row] is self.current_item:
+            self.status_label.setText("Can't remove an item that's currently downloading.")
             return
         self.queue_list.takeItem(row)
         del self.queue[row]
