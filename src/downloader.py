@@ -39,11 +39,12 @@ class DownloadWorker(QThread):
     done = Signal(str)
     error = Signal(str)
 
-    def __init__(self, url, format_id, out_dir):
+    def __init__(self, url, format_id, out_dir, audio_only=False):
         super().__init__()
         self.url = url
         self.format_id = format_id
         self.out_dir = out_dir
+        self.audio_only = audio_only
 
     def _hook(self, d):
         if d["status"] == "downloading":
@@ -57,12 +58,24 @@ class DownloadWorker(QThread):
 
     def run(self):
         try:
-            opts = {
-                "format": f"{self.format_id}+bestaudio/best",
-                "outtmpl": f"{self.out_dir}/%(title)s.%(ext)s",
-                "progress_hooks": [self._hook],
-                "merge_output_format": "mp4",
-            }
+            if self.audio_only:
+                opts = {
+                    "format": "bestaudio/best",
+                    "outtmpl": f"{self.out_dir}/%(title)s.%(ext)s",
+                    "progress_hooks": [self._hook],
+                    "postprocessors": [{
+                        "key": "FFmpegExtractAudio",
+                        "preferredcodec": "mp3",
+                        "preferredquality": "192",
+                    }],
+                }
+            else:
+                opts = {
+                    "format": f"{self.format_id}+bestaudio/best",
+                    "outtmpl": f"{self.out_dir}/%(title)s.%(ext)s",
+                    "progress_hooks": [self._hook],
+                    "merge_output_format": "mp4",
+                }
             with yt_dlp.YoutubeDL(opts) as ydl:
                 ydl.download([self.url])
             self.done.emit("Download complete.")

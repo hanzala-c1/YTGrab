@@ -3,7 +3,7 @@ import os
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLineEdit,
     QPushButton, QComboBox, QProgressBar, QLabel, QFileDialog,
-    QListWidget, QListWidgetItem
+    QListWidget, QListWidgetItem, QCheckBox
 )
 from src.downloader import FormatFetcher, DownloadWorker, PlaylistFetcher
 
@@ -35,6 +35,12 @@ class MainWindow(QWidget):
         self.quality_box = QComboBox()
         self.quality_box.setEnabled(False)
         layout.addWidget(self.quality_box)
+
+        self.audio_only_check = QCheckBox("Audio only (MP3)")
+        self.audio_only_check.stateChanged.connect(
+            lambda state: self.quality_box.setEnabled(not state and bool(self.formats))
+        )
+        layout.addWidget(self.audio_only_check)
 
         add_row = QHBoxLayout()
         self.add_btn = QPushButton("Add to Queue")
@@ -120,7 +126,9 @@ class MainWindow(QWidget):
         if not url or not format_id:
             return
 
-        item = {"url": url, "format_id": format_id, "title": title, "status": "Queued"}
+        audio_only = self.audio_only_check.isChecked()
+        item = {"url": url, "format_id": format_id, "title": title,
+                "status": "Queued", "audio_only": audio_only}
         self.queue.append(item)
 
         list_item = QListWidgetItem(f"Queued - {title}")
@@ -166,7 +174,10 @@ class MainWindow(QWidget):
         self.progress.setValue(0)
         self.status_label.setText(f"Downloading: {item['title']}")
 
-        self.worker = DownloadWorker(item["url"], item["format_id"], self.out_dir)
+        self.worker = DownloadWorker(
+            item["url"], item["format_id"], self.out_dir,
+            audio_only=item.get("audio_only", False)
+        )
         self.worker.progress.connect(self.progress.setValue)
         self.worker.status.connect(self.status_label.setText)
         self.worker.done.connect(self.on_item_done)
