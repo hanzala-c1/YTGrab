@@ -1,0 +1,72 @@
+name: Build Windows MSIX
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build EXE with PyInstaller
+        run: |
+          pyinstaller --name hanGrab --windowed --onedir main.py
+
+      - name: Prepare MSIX layout
+        run: |
+          mkdir msix_build
+          xcopy /E /I dist\hanGrab msix_build\hanGrab
+          copy assets\icon.svg msix_build\icon.svg
+
+      - name: Create AppxManifest.xml
+        shell: pwsh
+        run: |
+          @"
+          <?xml version="1.0" encoding="utf-8"?>
+          <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+                   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+                   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+            <Identity Name="HanzalaArshad.HanGrab" Publisher="CN=FA173E36-1995-4F24-8341-9424473800A6" Version="1.0.0.0" />
+            <Properties>
+              <DisplayName>hanGrab</DisplayName>
+              <PublisherDisplayName>Hanzala Arshad</PublisherDisplayName>
+              <Logo>icon.svg</Logo>
+            </Properties>
+            <Dependencies>
+              <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+            </Dependencies>
+            <Resources>
+              <Resource Language="en-us" />
+            </Resources>
+            <Applications>
+              <Application Id="hanGrab" Executable="hanGrab\hanGrab.exe" EntryPoint="Windows.FullTrustApplication">
+                <uap:VisualElements DisplayName="hanGrab" Description="Video downloader" Square150x150Logo="icon.svg" Square44x44Logo="icon.svg" BackgroundColor="transparent" />
+              </Application>
+            </Applications>
+            <Capabilities>
+              <rescap:Capability Name="runFullTrust" />
+            </Capabilities>
+          </Package>
+          "@ | Out-File -Encoding utf8 msix_build\AppxManifest.xml
+
+      - name: Package MSIX
+        run: |
+          & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe" pack /d msix_build /p hanGrab.msix
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hanGrab-msix
+          path: hanGrab.msix
