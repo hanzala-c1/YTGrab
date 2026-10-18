@@ -1,5 +1,6 @@
 import shutil
 from PySide6.QtCore import QThread, Signal
+import os
 import yt_dlp
 
 
@@ -14,7 +15,10 @@ class FormatFetcher(QThread):
 
     def run(self):
         try:
+            cookie_path = os.path.expanduser("~/.config/ytgrab/cookies.txt")
             opts = {"quiet": True, "no_warnings": True}
+            if os.path.exists(cookie_path):
+                opts["cookiefile"] = cookie_path
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(self.url, download=False)
 

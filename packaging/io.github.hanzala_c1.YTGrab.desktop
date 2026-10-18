@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=YTGrab
+Comment=Download and convert videos
+Exec=ytgrab
+Icon=io.github.hanzala_c1.YTGrab
+Terminal=false
+Type=Application
+Categories=AudioVideo;Network;

@@ -3,7 +3,7 @@ import os
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLineEdit,
     QPushButton, QComboBox, QProgressBar, QLabel, QFileDialog,
-    QListWidget, QListWidgetItem, QCheckBox
+    QListWidget, QListWidgetItem, QCheckBox, QMessageBox
 )
 from src.downloader import FormatFetcher, DownloadWorker, PlaylistFetcher
 
@@ -73,6 +73,16 @@ class MainWindow(QWidget):
 
         self.status_label = QLabel("")
         layout.addWidget(self.status_label)
+
+    def show_error(self, title, message):
+        self.status_label.setText("Error — see popup for details")
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Critical)
+        box.setWindowTitle(title)
+        box.setText(message)
+        box.setTextInteractionFlags(box.textInteractionFlags() | 
+                                     __import__("PySide6.QtCore", fromlist=["Qt"]).Qt.TextInteractionFlag.TextSelectableByMouse)
+        box.exec()
 
     def fetch_formats(self):
         url = self.url_input.text().strip()
@@ -203,13 +213,14 @@ class MainWindow(QWidget):
     def on_item_error(self, msg):
         item = self.current_item
         item["status"] = "Failed"
-        item["list_item"].setText(f"Failed - {item['title']} ({msg[:40]})")
+        item["list_item"].setText(f"Failed - {item['title']}")
         self.worker = None
+        self.show_error(f"Download failed: {item['title']}", msg)
         self.process_next()
 
     def on_error(self, msg):
-        self.status_label.setText(f"Error: {msg}")
         self.fetch_btn.setEnabled(True)
+        self.show_error("Fetch failed", msg)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,56 @@
+{
+    "id": "io.github.hanzala_c1.YTGrab",
+    "runtime": "org.kde.Platform",
+    "runtime-version": "6.10",
+    "sdk": "org.kde.Sdk",
+    "base": "io.qt.PySide.BaseApp",
+    "base-version": "6.10",
+    "command": "ytgrab",
+    "finish-args": [
+        "--share=ipc",
+        "--socket=fallback-x11",
+        "--socket=wayland",
+        "--share=network",
+        "--filesystem=xdg-download"
+    ],
+    "add-extensions": {
+        "org.freedesktop.Platform.ffmpeg-full": {
+            "directory": "lib/ffmpeg",
+            "version": "25.08",
+            "add-ld-path": "."
+        }
+    },
+    "modules": [
+        {
+            "name": "ffmpeg-ext",
+            "buildsystem": "simple",
+            "build-commands": [
+                "mkdir -p /app/lib/ffmpeg",
+                "mkdir -p /app/bin",
+                "ln -sf /app/lib/ffmpeg/ffmpeg /app/bin/ffmpeg"
+            ]
+        },
+        {
+            "name": "ytgrab",
+            "buildsystem": "simple",
+            "build-options": {
+                "build-args": ["--share=network"]
+            },
+            "build-commands": [
+                "pip3 install --prefix=/app yt-dlp",
+                "install -Dm644 main.py /app/bin/main.py",
+                "cp -r src /app/bin/src",
+                "install -Dm755 ytgrab-launcher.sh /app/bin/ytgrab",
+                "install -Dm644 io.github.hanzala_c1.YTGrab.desktop /app/share/applications/io.github.hanzala_c1.YTGrab.desktop",
+                "install -Dm644 io.github.hanzala_c1.YTGrab.metainfo.xml /app/share/metainfo/io.github.hanzala_c1.YTGrab.metainfo.xml"
+            ],
+            "sources": [
+                { "type": "file", "path": "../main.py" },
+                { "type": "dir", "path": "../src", "dest": "src" },
+                { "type": "file", "path": "ytgrab-launcher.sh" },
+                { "type": "file", "path": "io.github.hanzala_c1.YTGrab.desktop" },
+                { "type": "file", "path": "io.github.hanzala_c1.YTGrab.metainfo.xml" }
+            ]
+        }
+    ]
+}
