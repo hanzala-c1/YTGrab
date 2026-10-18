@@ -253,6 +253,47 @@ class MainWindow(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    app.setStyleSheet("""
+        QWidget {
+            background-color: #1e2128;
+            color: #e8e8e8;
+            font-size: 13px;
+        }
+        QLineEdit, QComboBox, QListWidget {
+            background-color: #2a2e38;
+            border: 1px solid #3a3f4b;
+            border-radius: 6px;
+            padding: 6px;
+        }
+        QPushButton {
+            background-color: #2F5FD1;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 7px 14px;
+        }
+        QPushButton:hover {
+            background-color: #3f6fe1;
+        }
+        QPushButton:disabled {
+            background-color: #3a3f4b;
+            color: #888;
+        }
+        QProgressBar {
+            border: 1px solid #3a3f4b;
+            border-radius: 6px;
+            text-align: center;
+            background-color: #2a2e38;
+        }
+        QProgressBar::chunk {
+            background-color: #2F5FD1;
+            border-radius: 5px;
+        }
+        QCheckBox {
+            padding: 4px;
+        }
+    """)
     win = MainWindow()
     win.show()
     sys.exit(app.exec())
