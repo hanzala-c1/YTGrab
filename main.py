@@ -18,6 +18,7 @@ class MainWindow(QWidget):
         self.queue = []
         self.current_item = None
         self.worker = None
+        self.cookie_file = None
 
         layout = QVBoxLayout(self)
 
@@ -41,6 +42,7 @@ class MainWindow(QWidget):
             lambda state: self.quality_box.setEnabled(not state and bool(self.formats))
         )
         layout.addWidget(self.audio_only_check)
+
 
         add_row = QHBoxLayout()
         self.add_btn = QPushButton("Add to Queue")
@@ -74,15 +76,40 @@ class MainWindow(QWidget):
         self.status_label = QLabel("")
         layout.addWidget(self.status_label)
 
-    def show_error(self, title, message):
+    def show_error(self, title, message, retry_callback=None):
         self.status_label.setText("Error — see popup for details")
+
+        if "sign in to confirm" in message.lower() or "not a bot" in message.lower():
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Icon.Warning)
+            box.setWindowTitle("YouTube verification needed")
+            box.setText(
+                "YouTube is asking to verify this isn't a bot.\n\n"
+                "This happens occasionally and isn't an app problem — "
+                "it clears up by importing a cookies file from your browser."
+            )
+            import_btn = box.addButton("Import Cookies...", QMessageBox.ButtonRole.ActionRole)
+            box.addButton(QMessageBox.StandardButton.Cancel)
+            box.exec()
+            if box.clickedButton() == import_btn:
+                self.import_cookies()
+                if self.cookie_file and retry_callback:
+                    retry_callback()
+            return
+
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Critical)
         box.setWindowTitle(title)
         box.setText(message)
-        box.setTextInteractionFlags(box.textInteractionFlags() | 
+        box.setTextInteractionFlags(box.textInteractionFlags() |
                                      __import__("PySide6.QtCore", fromlist=["Qt"]).Qt.TextInteractionFlag.TextSelectableByMouse)
         box.exec()
+
+    def import_cookies(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Select cookies.txt", "", "Text files (*.txt)")
+        if path:
+            self.cookie_file = path
+            self.cookie_label.setText(f"Cookies: {os.path.basename(path)}")
 
     def fetch_formats(self):
         url = self.url_input.text().strip()
@@ -94,7 +121,7 @@ class MainWindow(QWidget):
         looks_like_playlist = "list=" in url or "/playlist" in url
         if looks_like_playlist:
             self.status_label.setText("Checking URL...")
-            self.playlist_fetcher = PlaylistFetcher(url)
+            self.playlist_fetcher = PlaylistFetcher(url, cookie_file=self.cookie_file)
             self.playlist_fetcher.finished.connect(self.on_playlist_ready)
             self.playlist_fetcher.not_playlist.connect(lambda: self.fetch_single(url))
             self.playlist_fetcher.error.connect(lambda e: self.fetch_single(url))
@@ -104,7 +131,7 @@ class MainWindow(QWidget):
 
     def fetch_single(self, url):
         self.status_label.setText("Fetching formats...")
-        self.fetcher = FormatFetcher(url)
+        self.fetcher = FormatFetcher(url, cookie_file=self.cookie_file)
         self.fetcher.finished.connect(self.on_formats_ready)
         self.fetcher.error.connect(self.on_error)
         self.fetcher.start()
@@ -195,7 +222,8 @@ class MainWindow(QWidget):
 
         self.worker = DownloadWorker(
             item["url"], item["format_id"], self.out_dir,
-            audio_only=item.get("audio_only", False)
+            audio_only=item.get("audio_only", False),
+            cookie_file=self.cookie_file
         )
         self.worker.progress.connect(self.progress.setValue)
         self.worker.status.connect(self.status_label.setText)
@@ -215,12 +243,12 @@ class MainWindow(QWidget):
         item["status"] = "Failed"
         item["list_item"].setText(f"Failed - {item['title']}")
         self.worker = None
-        self.show_error(f"Download failed: {item['title']}", msg)
+        self.show_error(f"Download failed: {item['title']}", msg, retry_callback=self.start_queue)
         self.process_next()
 
     def on_error(self, msg):
         self.fetch_btn.setEnabled(True)
-        self.show_error("Fetch failed", msg)
+        self.show_error("Fetch failed", msg, retry_callback=self.fetch_formats)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import shutil
-from PySide6.QtCore import QThread, Signal
 import os
+from PySide6.QtCore import QThread, Signal
 import yt_dlp
 
 
@@ -9,16 +9,16 @@ class FormatFetcher(QThread):
     finished = Signal(list, str)  # formats, title
     error = Signal(str)
 
-    def __init__(self, url):
+    def __init__(self, url, cookie_file=None):
         super().__init__()
         self.url = url
+        self.cookie_file = cookie_file
 
     def run(self):
         try:
-            cookie_path = os.path.expanduser("~/.config/ytgrab/cookies.txt")
             opts = {"quiet": True, "no_warnings": True}
-            if os.path.exists(cookie_path):
-                opts["cookiefile"] = cookie_path
+            if self.cookie_file and os.path.exists(self.cookie_file):
+                opts["cookiefile"] = self.cookie_file
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(self.url, download=False)
 
@@ -44,12 +44,13 @@ class DownloadWorker(QThread):
     done = Signal(str)
     error = Signal(str)
 
-    def __init__(self, url, format_id, out_dir, audio_only=False):
+    def __init__(self, url, format_id, out_dir, audio_only=False, cookie_file=None):
         super().__init__()
         self.url = url
         self.format_id = format_id
         self.out_dir = out_dir
         self.audio_only = audio_only
+        self.cookie_file = cookie_file
 
     def _hook(self, d):
         if d["status"] == "downloading":
@@ -69,6 +70,7 @@ class DownloadWorker(QThread):
             if self.audio_only:
                 opts = {
                     "format": "bestaudio/best",
+                    "cookiefile": self.cookie_file if self.cookie_file and os.path.exists(self.cookie_file) else None,
                     "outtmpl": f"{self.out_dir}/%(title)s.%(ext)s",
                     "progress_hooks": [self._hook],
                     "postprocessors": [{
@@ -80,6 +82,7 @@ class DownloadWorker(QThread):
             else:
                 opts = {
                     "format": f"{self.format_id}+bestaudio/best",
+                    "cookiefile": self.cookie_file if self.cookie_file and os.path.exists(self.cookie_file) else None,
                     "outtmpl": f"{self.out_dir}/%(title)s.%(ext)s",
                     "progress_hooks": [self._hook],
                     "merge_output_format": "mp4",
@@ -97,13 +100,16 @@ class PlaylistFetcher(QThread):
     not_playlist = Signal()
     error = Signal(str)
 
-    def __init__(self, url):
+    def __init__(self, url, cookie_file=None):
         super().__init__()
         self.url = url
+        self.cookie_file = cookie_file
 
     def run(self):
         try:
             opts = {"quiet": True, "no_warnings": True, "extract_flat": True}
+            if self.cookie_file and os.path.exists(self.cookie_file):
+                opts["cookiefile"] = self.cookie_file
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(self.url, download=False)
 
