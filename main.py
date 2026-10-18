@@ -11,7 +11,7 @@ from src.downloader import FormatFetcher, DownloadWorker, PlaylistFetcher
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("YTGrab")
+        self.setWindowTitle("hanGrab")
         self.resize(560, 480)
         self.out_dir = os.path.expanduser("~/Downloads")
         self.formats = []

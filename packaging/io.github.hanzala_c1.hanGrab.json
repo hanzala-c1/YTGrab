@@ -1,11 +1,12 @@
 {
-    "id": "io.github.hanzala_c1.YTGrab",
+    "id": "io.github.hanzala_c1.hanGrab",
     "runtime": "org.kde.Platform",
     "runtime-version": "6.10",
     "sdk": "org.kde.Sdk",
     "base": "io.qt.PySide.BaseApp",
     "base-version": "6.10",
     "command": "ytgrab",
+    "modules": [{"name": "icon", "buildsystem": "simple", "build-commands": ["install -Dm644 ../assets/icon.svg /app/share/icons/hicolor/scalable/apps/io.github.hanzala_c1.hanGrab.svg"]}],,
     "finish-args": [
         "--share=ipc",
         "--socket=fallback-x11",
@@ -41,15 +42,15 @@
                 "install -Dm644 main.py /app/bin/main.py",
                 "cp -r src /app/bin/src",
                 "install -Dm755 ytgrab-launcher.sh /app/bin/ytgrab",
-                "install -Dm644 io.github.hanzala_c1.YTGrab.desktop /app/share/applications/io.github.hanzala_c1.YTGrab.desktop",
-                "install -Dm644 io.github.hanzala_c1.YTGrab.metainfo.xml /app/share/metainfo/io.github.hanzala_c1.YTGrab.metainfo.xml"
+                "install -Dm644 io.github.hanzala_c1.hanGrab.desktop /app/share/applications/io.github.hanzala_c1.hanGrab.desktop",
+                "install -Dm644 io.github.hanzala_c1.hanGrab.metainfo.xml /app/share/metainfo/io.github.hanzala_c1.hanGrab.metainfo.xml"
             ],
             "sources": [
                 { "type": "file", "path": "../main.py" },
                 { "type": "dir", "path": "../src", "dest": "src" },
                 { "type": "file", "path": "ytgrab-launcher.sh" },
-                { "type": "file", "path": "io.github.hanzala_c1.YTGrab.desktop" },
-                { "type": "file", "path": "io.github.hanzala_c1.YTGrab.metainfo.xml" }
+                { "type": "file", "path": "io.github.hanzala_c1.hanGrab.desktop" },
+                { "type": "file", "path": "io.github.hanzala_c1.hanGrab.metainfo.xml" }
             ]
         }
     ]
