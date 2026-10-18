@@ -6,7 +6,6 @@
     "base": "io.qt.PySide.BaseApp",
     "base-version": "6.10",
     "command": "ytgrab",
-    "modules": [{"name": "icon", "buildsystem": "simple", "build-commands": ["install -Dm644 ../assets/icon.svg /app/share/icons/hicolor/scalable/apps/io.github.hanzala_c1.hanGrab.svg"]}],,
     "finish-args": [
         "--share=ipc",
         "--socket=fallback-x11",
@@ -22,6 +21,16 @@
         }
     },
     "modules": [
+        {
+            "name": "icon",
+            "buildsystem": "simple",
+            "build-commands": [
+                "install -Dm644 icon.svg /app/share/icons/hicolor/scalable/apps/io.github.hanzala_c1.hanGrab.svg"
+            ],
+            "sources": [
+                { "type": "file", "path": "../assets/icon.svg", "dest-filename": "icon.svg" }
+            ]
+        },
         {
             "name": "ffmpeg-ext",
             "buildsystem": "simple",
