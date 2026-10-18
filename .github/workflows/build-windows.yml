@@ -36,7 +36,9 @@ jobs:
         run: |
           mkdir msix_build
           xcopy /E /I dist\hanGrab msix_build\hanGrab
-          copy assets\icon.svg msix_build\icon.svg
+          copy assets\icon-44.png msix_build\icon-44.png
+          copy assets\icon-150.png msix_build\icon-150.png
+          copy assets\icon-300.png msix_build\icon-300.png
 
       - name: Create AppxManifest.xml
         shell: pwsh
@@ -50,7 +52,7 @@ jobs:
             <Properties>
               <DisplayName>hanGrab</DisplayName>
               <PublisherDisplayName>Hanzala Arshad</PublisherDisplayName>
-              <Logo>icon.svg</Logo>
+              <Logo>icon-300.png</Logo>
             </Properties>
             <Dependencies>
               <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
@@ -60,7 +62,7 @@ jobs:
             </Resources>
             <Applications>
               <Application Id="hanGrab" Executable="hanGrab\hanGrab.exe" EntryPoint="Windows.FullTrustApplication">
-                <uap:VisualElements DisplayName="hanGrab" Description="Video downloader" Square150x150Logo="icon.svg" Square44x44Logo="icon.svg" BackgroundColor="transparent" />
+                <uap:VisualElements DisplayName="hanGrab" Description="Video downloader" Square150x150Logo="icon-150.png" Square44x44Logo="icon-44.png" BackgroundColor="transparent" />
               </Application>
             </Applications>
             <Capabilities>
