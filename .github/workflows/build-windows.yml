@@ -21,9 +21,16 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
+      - name: Download static ffmpeg
+        run: |
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_extracted
+          $exe = Get-ChildItem -Path ffmpeg_extracted -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+          Copy-Item $exe.FullName -Destination .
+
       - name: Build EXE with PyInstaller
         run: |
-          pyinstaller --name hanGrab --windowed --onedir main.py
+          pyinstaller --name hanGrab --windowed --onedir --add-binary "ffmpeg.exe;." main.py
 
       - name: Prepare MSIX layout
         run: |
@@ -70,3 +77,8 @@ jobs:
         with:
           name: hanGrab-msix
           path: hanGrab.msix
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hanGrab-raw-exe
+          path: dist/hanGrab

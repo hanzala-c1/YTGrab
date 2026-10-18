@@ -63,7 +63,7 @@ class DownloadWorker(QThread):
             self.status.emit("Converting...")
 
     def run(self):
-        if self.audio_only and not shutil.which("ffmpeg"):
+        if not shutil.which("ffmpeg"):
             self.error.emit("ffmpeg not found. Please install it.")
             return
         try:
